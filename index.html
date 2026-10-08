@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="手紙と封筒をランダムに組み合わせる実験。">
+  <title>手紙と封筒</title>
+  <style>
+    :root { color-scheme: light; --ink: #17191d; --muted: #717680; --line: #e5e7eb; --blue: #3563db; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #fff; color: var(--ink); font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    button, input { font: inherit; touch-action: manipulation; }
+    button { cursor: pointer; }
+    button:disabled, input:disabled { opacity: .5; cursor: wait; }
+    button:focus-visible, input:focus-visible { outline: 3px solid #7a9cfa; outline-offset: 4px; }
+    h1, p { margin: 0; }
+    .app { width: min(900px, 100%); margin: 64px auto; padding: 0 32px; }
+    .heading { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; }
+    .heading-icon { width: 34px; height: 34px; fill: none; stroke: var(--ink); stroke-width: 1.3; stroke-linejoin: round; }
+    h1 { font-size: 28px; font-weight: 600; letter-spacing: .04em; }
+    .subtitle { color: var(--muted); font-size: 12px; margin-top: 7px; }
+    .workspace { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; transition: box-shadow .5s, border-color .5s; }
+    .controls { padding: 25px 28px; display: flex; align-items: center; gap: 24px; border-bottom: 1px solid var(--line); }
+    .count-label { flex-shrink: 0; font-size: 13px; }
+    .count-label em { font-family: Georgia, serif; font-size: 16px; font-weight: 400; margin-left: 7px; color: var(--muted); }
+    .range { flex: 1; display: flex; align-items: center; gap: 13px; min-width: 0; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+    input[type=range] { appearance: none; -webkit-appearance: none; background: transparent; height: 28px; width: 100%; min-width: 0; margin: 0; cursor: pointer; }
+    input[type=range]::-webkit-slider-runnable-track { height: 3px; border-radius: 3px; background: #dfe2e8; }
+    input[type=range]::-webkit-slider-thumb { appearance: none; width: 15px; height: 15px; border-radius: 50%; background: var(--ink); margin-top: -6px; }
+    input[type=range]::-moz-range-track { height: 3px; border-radius: 3px; background: #dfe2e8; }
+    input[type=range]::-moz-range-thumb { width: 15px; height: 15px; border: 0; border-radius: 50%; background: var(--ink); }
+    .count-value { min-width: 63px; font-size: 12px; text-align: right; color: var(--muted); }
+    .count-value strong { color: var(--ink); font-size: 25px; font-weight: 500; font-variant-numeric: tabular-nums; margin-right: 5px; }
+    .board { padding: 25px 28px 28px; }
+    .board-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 18px; font-size: 12px; }
+    .board-heading span:last-child { font-size: 11px; color: var(--muted); }
+    .envelopes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+    .envelope { min-height: 109px; border: 1px solid #dee2e9; border-radius: 6px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; background: #fff; }
+    .envelope::before { content: ""; position: absolute; inset: 0 0 auto; height: 51px; background: #f3f4f7; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+    .destination { font-size: 10px; color: #656b76; position: absolute; top: 9px; left: 10px; z-index: 1; }
+    .letter { z-index: 1; font-size: 29px; line-height: 1; font-weight: 500; font-variant-numeric: tabular-nums; margin-top: 22px; }
+    .letter-label { z-index: 1; font-size: 9px; color: var(--muted); margin-top: 9px; margin-bottom: 10px; }
+    .waiting .letter { font-size: 23px; font-weight: 400; color: #b4b9c2; }
+    .seal { position: absolute; right: 8px; top: 7px; width: 17px; height: 17px; border-radius: 50%; background: var(--blue); color: white; font-size: 11px; display: none; align-items: center; justify-content: center; z-index: 2; }
+    .correct { border-color: #779af2; background: #f5f8ff; color: #244bb4; }
+    .correct::before { background: #e7eeff; }
+    .correct .seal { display: flex; }
+    .correct .destination, .correct .letter-label { color: #4b69b2; }
+    .revealed { animation: open-letter .28s ease-out both; }
+    @keyframes open-letter { from { opacity: .25; transform: translateY(5px) scale(.94); } to { opacity: 1; transform: none; } }
+    .dense { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+    .dense .envelope { min-height: 86px; }
+    .dense .envelope::before { height: 40px; }
+    .dense .letter { font-size: 24px; margin-top: 25px; }
+    .dense .letter-label { margin-top: 6px; margin-bottom: 8px; }
+    .result { padding: 22px 28px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 18px; }
+    .result-numbers { display: flex; align-items: baseline; gap: 12px; font-variant-numeric: tabular-nums; }
+    .result-label { font-size: 12px; color: var(--muted); }
+    .result-value { font-size: 26px; font-weight: 500; }
+    .result-total { font-size: 15px; color: var(--muted); font-weight: 400; }
+    .result-rate { font-size: 13px; color: var(--muted); margin-left: 9px; }
+    .actions { display: flex; gap: 10px; align-items: center; }
+    .run, .reset { min-height: 44px; border-radius: 6px; font-size: 12px; }
+    .run { border: 1px solid var(--ink); background: var(--ink); color: white; padding: 0 22px; display: flex; gap: 10px; align-items: center; justify-content: center; }
+    .run:hover { background: #343840; }
+    .run svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .reset { padding: 0 13px; color: var(--muted); background: white; border: 1px solid var(--line); }
+    .reset:hover { background: #f6f7f9; }
+    .status { color: var(--muted); font-size: 11px; margin-top: 14px; min-height: 18px; text-align: right; }
+    .many { grid-template-columns: repeat(10, minmax(0, 1fr)); max-height: 400px; overflow-y: auto; padding: 2px; gap: 7px; scrollbar-width: thin; }
+    .many .envelope { min-height: 75px; }
+    .many .letter { font-size: 21px; }
+    .many .destination { font-size: 9px; left: 5px; }
+    .many .seal { right: 4px; top: 5px; width: 14px; height: 14px; font-size: 9px; }
+    .records { margin-top: 34px; }
+    .records-heading { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 16px; }
+    .records-heading h2 { font-size: 15px; font-weight: 500; margin: 0; }
+    .record-count { color: var(--muted); font-size: 11px; margin-top: 7px; }
+    .batch { background: white; color: var(--ink); border: 1px solid var(--line); padding: 10px 14px; border-radius: 6px; font-size: 11px; }
+    .batch:hover { background: #f6f7f9; }
+    .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .chart-card { border: 1px solid var(--line); border-radius: 10px; padding: 23px 21px 16px; min-width: 0; }
+    .chart-card h3 { font-size: 13px; font-weight: 500; margin: 0; }
+    .chart-number { font-size: 28px; font-weight: 500; margin: 12px 0 7px; font-variant-numeric: tabular-nums; }
+    .chart-number small { font-size: 13px; font-weight: 400; margin-left: 4px; color: var(--muted); }
+    .chart-meta { font-size: 10px; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; min-height: 17px; }
+    .chart { width: 100%; display: block; margin-top: 12px; }
+    .chart-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 15px; font-size: 10px; color: var(--muted); margin-top: 9px; }
+    .chart-legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .chart-legend i { display: block; width: 14px; height: 2px; background: var(--blue); }
+    .chart-legend .reference { background: transparent; border-top: 1px dashed #7b8089; }
+    .record-note { font-size: 10px; color: var(--muted); margin-top: 12px; line-height: 1.8; }
+    .achievement { width: min(460px, calc(100% - 40px)); max-height: calc(100% - 40px); overflow-y: auto; padding: 32px; border: 1px solid #d7e1ff; border-radius: 14px; color: var(--ink); background: #fff; box-shadow: 0 18px 90px #354b7630; }
+    .achievement::backdrop { background: #20283818; backdrop-filter: blur(1px); }
+    .achievement-mark { width: 38px; height: 38px; display: grid; place-items: center; color: var(--blue); background: #eef3ff; border-radius: 50%; margin-bottom: 18px; font-size: 23px; }
+    .achievement h2 { font-size: 16px; font-weight: 500; margin: 0 0 14px; }
+    .achievement p { font-size: 16px; line-height: 2.1; overflow-wrap: anywhere; }
+    .achievement strong { color: var(--blue); font-weight: 600; display: inline-block; max-width: 100%; }
+    .achievement-close { width: 100%; margin-top: 25px; background: var(--ink); color: white; border: 0; border-radius: 6px; padding: 12px; font-size: 12px; cursor: pointer; }
+    .celebration-canvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
+    .celebration-canvas[hidden] { display: none; }
+    .is-celebrating { border-color: #89a5fa; box-shadow: 0 0 0 4px #e9efff, 0 0 70px #818cff35, 0 20px 80px #ab87ed18; }
+    .is-celebrating .correct { animation: shine 1.1s ease-out; }
+    @keyframes shine { 0% { box-shadow: inset 0 0 0 20px #a4bfff55; } 60% { box-shadow: inset 0 0 0 0 #a4bfff00; transform: translateY(-4px); } 100% { transform: none; } }
+    .no-script { margin: 20px 0; font-size: 13px; }
+    @media (min-width: 1400px) { .app { margin-top: 90px; } }
+    @media (max-width: 650px) {
+      .app { padding: 0 20px; margin: 30px auto; }
+      .heading { margin-bottom: 24px; gap: 12px; }
+      h1 { font-size: 24px; }
+      .heading-icon { width: 29px; height: 29px; }
+      .controls { padding: 18px; gap: 14px; flex-wrap: wrap; }
+      .count-label { flex: 1; }
+      .count-value { order: 1; }
+      .range { order: 2; flex: 0 0 100%; }
+      .board { padding: 19px 18px 21px; }
+      .envelopes { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+      .envelope { min-height: 96px; }
+      .envelope::before { height: 45px; }
+      .letter { font-size: 26px; }
+      .dense { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+      .dense .envelope { min-height: 78px; }
+      .dense .letter { font-size: 21px; }
+      .dense .destination { font-size: 9px; top: 8px; left: 6px; }
+      .dense .seal { right: 4px; top: 5px; width: 14px; height: 14px; font-size: 9px; }
+      .result { padding: 19px 18px; flex-wrap: wrap; gap: 18px; }
+      .result-numbers { flex: 1 1 100%; }
+      .result-rate { margin-left: auto; }
+      .actions { width: 100%; }
+      .run { flex: 1; }
+      .status { text-align: left; font-size: 10px; }
+      .many { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .charts { grid-template-columns: 1fr; gap: 14px; }
+      .records { margin-top: 28px; }
+      .chart-card { padding: 21px 18px 16px; }
+      .achievement { padding: 25px; }
+    }
+    @media (max-width: 350px) {
+      .app { padding: 0 14px; }
+      .board, .controls, .result { padding-left: 14px; padding-right: 14px; }
+      .board-heading span:last-child { font-size: 10px; }
+      .dense { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .many { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="heading">
+      <svg class="heading-icon" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="7" width="26" height="19" rx="2"/><path d="m3 8 13 10L29 8"/></svg>
+      <div><h1>手紙と封筒</h1><p class="subtitle">ランダムな組み合わせ</p></div>
+    </header>
+    <section class="workspace" id="workspace" aria-label="手紙と封筒の組み合わせ実験">
+      <div class="controls">
+        <label class="count-label" for="letter-count">手紙・封筒の数 <em>n</em></label>
+        <div class="range"><span>2</span><input id="letter-count" type="range" min="2" max="100" value="10" aria-valuetext="10組"><span>100</span></div>
+        <output class="count-value" for="letter-count"><strong id="count-value">10</strong>組</output>
+      </div>
+      <div class="board">
+        <div class="board-heading"><span>封筒</span><span>同じ番号なら正解</span></div>
+        <div class="envelopes" id="envelopes" aria-label="各封筒に入った手紙"></div>
+      </div>
+      <div class="result">
+        <div class="result-numbers" aria-live="polite" aria-atomic="true"><span class="result-label">正解</span><span class="result-value"><span id="matches">—</span><span class="result-total"> / <span id="total">10</span></span></span><span class="result-rate" id="rate">— %</span></div>
+        <div class="actions">
+          <button class="run" id="run"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h3c5 0 7 12 12 12h3M3 18h3c2 0 3-2 4-4m4-4c1-2 2-4 4-4h3m-3-3 3 3-3 3m0 6 3 3-3 3"/></svg>組み合わせる</button>
+          <button class="reset" id="reset">リセット</button>
+        </div>
+      </div>
+    </section>
+    <p class="status" id="status" role="status">未実行</p>
+    <section class="records" aria-labelledby="records-title">
+      <div class="records-heading"><div><h2 id="records-title">試行の記録</h2><p class="record-count" id="record-count">n = 10 · 0回</p></div><button class="batch" id="batch">1,000回実行</button></div>
+      <div class="charts">
+        <article class="chart-card">
+          <h3>全部不一致の確率</h3>
+          <p class="chart-number"><span id="no-match-probability">36.7879</span><small>%</small></p>
+          <div class="chart-meta"><span>n = <span id="probability-n">10</span> の理論値</span><span>実測 <span id="observed-no-match">—</span></span></div>
+          <svg class="chart" id="probability-chart" viewBox="0 0 360 190" role="img" aria-label="組数を増やすと全部不一致の確率が1/eに近づくグラフ"></svg>
+          <div class="chart-legend"><span><i></i>全部不一致の確率</span><span><i class="reference"></i>1/e ≈ 36.7879%</span></div>
+        </article>
+        <article class="chart-card">
+          <h3>一致数の平均</h3>
+          <p class="chart-number"><span id="mean-matches">—</span><small>組</small></p>
+          <div class="chart-meta"><span>n = <span id="mean-n">10</span> の実測</span><span>一致数はnに依らず、ある値に収束する</span></div>
+          <svg class="chart" id="mean-chart" viewBox="0 0 360 190" role="img" aria-label="試行を重ねたときの一致数の平均を表示するグラフ"></svg>
+          <div class="chart-legend"><span><i></i>ここまでの平均</span></div>
+        </article>
+      </div>
+      <p class="record-note">記録は組数ごとに切り替わります。一括実行では最後の結果を封筒に表示します。</p>
+    </section>
+    <noscript><p class="no-script">JavaScript を有効にして開いてください。</p></noscript>
+  </main>
+  <canvas class="celebration-canvas" id="celebration" aria-hidden="true" hidden></canvas>
+  <dialog class="achievement" id="achievement" aria-labelledby="achievement-title" aria-describedby="achievement-message">
+    <div class="achievement-mark" aria-hidden="true">✦</div>
+    <h2 id="achievement-title">今回の一致</h2>
+    <p id="achievement-message"></p>
+    <button class="achievement-close" id="achievement-close" autofocus>閉じる</button>
+  </dialog>
+  <script>
+    'use strict';
+    const $ = id => document.getElementById(id);
+    const randomWord = new Uint32Array(1);
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    const records = new Map();
+    let n = 10;
+    let busy = false;
+    let effectFrame = 0;
+    let effectTimer = 0;
+
+    function randomInteger(bound) {
+      if (!globalThis.crypto?.getRandomValues) return Math.floor(Math.random() * bound);
+      const limit = Math.floor(4294967296 / bound) * bound;
+      let word;
+      do { crypto.getRandomValues(randomWord); word = randomWord[0]; } while (word >= limit);
+      return word % bound;
+    }
+
+    function draw(size) {
+      const letters = Array.from({length: size}, (_, i) => i + 1);
+      for (let i = size - 1; i > 0; i--) {
+        const j = randomInteger(i + 1);
+        [letters[i], letters[j]] = [letters[j], letters[i]];
+      }
+      return {letters, matches: letters.filter((letter, i) => letter === i + 1).length};
+    }
+
+    function noMatchProbability(size) {
+      if (size === 0) return 1;
+      if (size === 1) return 0;
+      let previous2 = 1, previous1 = 0;
+      for (let i = 2; i <= size; i++) {
+        const current = (i - 1) / i * previous1 + previous2 / i;
+        previous2 = previous1;
+        previous1 = current;
+      }
+      return previous1;
+    }
+
+    function tailProbability(size, minimum) {
+      // P(K=j) = C(n,j) D_(n-j) / n! = P_(n-j) / j!.
+      // Sum positive terms directly to retain accuracy even for very rare results.
+      let inverseFactorial = 1, probability = 0;
+      for (let j = 0; j <= size; j++) {
+        if (j > 0) inverseFactorial /= j;
+        if (j >= minimum) probability += noMatchProbability(size - j) * inverseFactorial;
+      }
+      return probability;
+    }
+
+    function formatProbability(probability) {
+      const percentage = probability * 100;
+      if (percentage >= .0001) return `約${percentage.toFixed(4)}%`;
+      const [coefficient, exponent] = percentage.toExponential(4).split('e');
+      const superscripts = {'-': '⁻', '+': '⁺', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹'};
+      const power = String(Number(exponent)).split('').map(character => superscripts[character]).join('');
+      return `約${coefficient} × 10${power}%`;
+    }
+
+    function currentRecord() {
+      if (!records.has(n)) records.set(n, {trials: 0, misses: 0, totalMatches: 0, history: []});
+      return records.get(n);
+    }
+
+    function record(result) {
+      const data = currentRecord();
+      data.trials++;
+      if (result.matches === 0) data.misses++;
+      data.totalMatches += result.matches;
+      data.history.push([data.trials, data.totalMatches / data.trials]);
+    }
+
+    function renderProbabilityChart() {
+      const x = size => 37 + (size - 2) / 98 * 296;
+      const y = probability => 151 - (probability - .28) / .24 * 132;
+      let markup = '';
+      [.3, .4, .5].forEach(probability => {
+        markup += `<line x1="37" x2="333" y1="${y(probability)}" y2="${y(probability)}" stroke="#e9ebf0"/><text x="29" y="${y(probability) + 3}" text-anchor="end" fill="#717680" font-size="9">${Math.round(probability * 100)}%</text>`;
+      });
+      [2, 10, 50, 100].forEach(size => {
+        markup += `<text x="${x(size)}" y="169" text-anchor="middle" fill="#717680" font-size="9">${size}</text>`;
+      });
+      const points = Array.from({length: 99}, (_, i) => `${x(i + 2)},${y(noMatchProbability(i + 2))}`);
+      markup += `<line x1="37" x2="333" y1="${y(1 / Math.E)}" y2="${y(1 / Math.E)}" stroke="#7b8089" stroke-dasharray="4 4"/><polyline points="${points.join(' ')}" fill="none" stroke="#3563db" stroke-width="2" stroke-linejoin="round"/>`;
+      markup += `<line x1="${x(n)}" x2="${x(n)}" y1="19" y2="151" stroke="#b4c4ec" stroke-dasharray="2 3"/><circle cx="${x(n)}" cy="${y(noMatchProbability(n))}" r="4" fill="#3563db" stroke="white" stroke-width="1.5"/>`;
+      markup += '<text x="333" y="188" text-anchor="end" fill="#717680" font-size="9">組数 n</text>';
+      $('probability-chart').innerHTML = markup;
+      $('probability-chart').setAttribute('aria-label', `組数を増やすと全部不一致の確率が1/e、約36.7879%に近づきます。n=${n}では${(noMatchProbability(n) * 100).toFixed(4)}%です。`);
+    }
+
+    function renderMeanChart(data) {
+      const maximum = Math.max(2, Math.ceil(data.history.reduce((largest, point) => Math.max(largest, point[1]), 0)));
+      const x = trial => 37 + (trial - 1) / Math.max(1, data.trials - 1) * 296;
+      const y = mean => 151 - mean / maximum * 132;
+      let markup = '';
+      [0, 1, maximum].forEach(mean => {
+        markup += `<line x1="37" x2="333" y1="${y(mean)}" y2="${y(mean)}" stroke="#e9ebf0"/><text x="29" y="${y(mean) + 3}" text-anchor="end" fill="#717680" font-size="9">${mean}</text>`;
+      });
+      if (data.trials) {
+        // Limit the SVG size while preserving the beginning and latest trial.
+        const stride = Math.max(1, Math.ceil(data.history.length / 250));
+        const points = data.history.filter((_, i) => i % stride === 0 || i === data.history.length - 1);
+        markup += `<polyline points="${points.map(point => `${x(point[0])},${y(point[1])}`).join(' ')}" fill="none" stroke="#3563db" stroke-width="2" stroke-linejoin="round"/>`;
+        const latest = data.history[data.history.length - 1];
+        markup += `<circle cx="${x(latest[0])}" cy="${y(latest[1])}" r="3" fill="#3563db"/>`;
+        const ticks = [...new Set([1, Math.ceil(data.trials / 2), data.trials])];
+        ticks.forEach(trial => {
+          markup += `<text x="${x(trial)}" y="169" text-anchor="middle" fill="#717680" font-size="9">${trial.toLocaleString('ja-JP')}</text>`;
+        });
+      } else {
+        markup += '<text x="185" y="115" text-anchor="middle" fill="#9297a0" font-size="10">まだ記録がありません</text>';
+      }
+      markup += '<text x="333" y="188" text-anchor="end" fill="#717680" font-size="9">試行回数</text>';
+      $('mean-chart').innerHTML = markup;
+      $('mean-chart').setAttribute('aria-label', data.trials ? `n=${n}、${data.trials}回の試行で一致数の平均は${(data.totalMatches / data.trials).toFixed(3)}組です。` : 'まだ試行の記録がありません。');
+    }
+
+    function updateRecords() {
+      const data = currentRecord();
+      $('record-count').textContent = `n = ${n} · ${data.trials.toLocaleString('ja-JP')}回`;
+      $('no-match-probability').textContent = (noMatchProbability(n) * 100).toFixed(4);
+      $('probability-n').textContent = $('mean-n').textContent = n;
+      $('observed-no-match').textContent = data.trials ? `${(data.misses / data.trials * 100).toFixed(2)}%` : '—';
+      $('mean-matches').textContent = data.trials ? (data.totalMatches / data.trials).toFixed(3) : '—';
+      renderMeanChart(data);
+    }
+
+    function buildEnvelopes() {
+      const container = $('envelopes');
+      container.replaceChildren();
+      container.classList.toggle('dense', n > 15);
+      container.classList.toggle('many', n > 40);
+      for (let i = 1; i <= n; i++) {
+        const card = document.createElement('div');
+        card.className = 'envelope waiting';
+        card.innerHTML = `<span class="destination">封筒 ${String(i).padStart(2, '0')}</span><span class="seal" aria-hidden="true">✓</span><span class="letter">?</span><span class="letter-label">未配布</span>`;
+        card.setAttribute('aria-label', `封筒${i}、未配布`);
+        container.append(card);
+      }
+    }
+
+    function showLetter(card, letter, destination) {
+      const correct = letter === destination;
+      card.className = `envelope revealed${correct ? ' correct' : ''}`;
+      card.querySelector('.letter').textContent = String(letter).padStart(2, '0');
+      card.querySelector('.letter-label').textContent = '手紙';
+      card.setAttribute('aria-label', `封筒${destination}に手紙${letter}、${correct ? '正解' : '不一致'}`);
+    }
+
+    function stopCelebration() {
+      cancelAnimationFrame(effectFrame);
+      clearTimeout(effectTimer);
+      effectFrame = effectTimer = 0;
+      $('celebration').hidden = true;
+      $('workspace').classList.remove('is-celebrating');
+    }
+
+    function shouldCelebrate(matches, size) { return size >= 20 && matches >= 5; }
+
+    function showAchievement(matches, size) {
+      const probability = document.createElement('strong');
+      probability.textContent = formatProbability(tailProbability(size, matches));
+      $('achievement-message').replaceChildren(`${size}組の手紙と封筒が${matches}組以上一致する確率は`, probability, 'です！');
+      celebrate();
+      $('achievement').showModal();
+    }
+
+    function celebrate() {
+      stopCelebration();
+      $('workspace').classList.add('is-celebrating');
+      effectTimer = setTimeout(stopCelebration, 3200);
+      if (reducedMotion.matches) return;
+      const canvas = $('celebration');
+      const context = canvas.getContext('2d');
+      if (!context) return;
+      const width = innerWidth, height = innerHeight;
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+      canvas.hidden = false;
+      const colors = ['#4b77ed', '#9a77e6', '#58bcdf', '#bacbfa', '#b3a5eb', '#dce4f5'];
+      const particles = [];
+      const panel = $('workspace').getBoundingClientRect();
+      const centerX = panel.left + panel.width / 2;
+      const centerY = Math.max(80, Math.min(height * .55, panel.top + panel.height * .45));
+      const mobile = width < 650;
+      // Layered fireworks, small stars and slowly falling ribbons.
+      for (let burst = 0; burst < 5; burst++) {
+        const angle = burst / 5 * Math.PI * 2 - Math.PI / 2;
+        const originX = Math.max(35, Math.min(width - 35, centerX + Math.cos(angle) * Math.min(width * .29, 280)));
+        const originY = Math.max(60, centerY + Math.sin(angle) * Math.min(height * .2, 170));
+        for (let i = 0; i < (mobile ? 32 : 52); i++) {
+          const direction = Math.random() * Math.PI * 2;
+          const speed = 45 + Math.random() * (mobile ? 100 : 160);
+          particles.push({x: originX, y: originY, vx: Math.cos(direction) * speed, vy: Math.sin(direction) * speed, start: burst * .15, life: 1 + Math.random() * .8, color: colors[i % colors.length], type: 'spark', size: 1 + Math.random() * 1.8, spin: 0});
+        }
+      }
+      for (let i = 0; i < (mobile ? 95 : 180); i++) {
+        particles.push({x: centerX + (Math.random() - .5) * Math.min(width * .9, 720), y: centerY - 60, vx: (Math.random() - .5) * 260, vy: -100 - Math.random() * 230, start: Math.random() * .25, life: 2 + Math.random() * .7, color: colors[i % colors.length], type: i % 4 === 0 ? 'star' : 'ribbon', size: 3 + Math.random() * 4, spin: (Math.random() - .5) * 8});
+      }
+      const started = performance.now();
+      function frame(now) {
+        const elapsed = (now - started) / 1000;
+        context.clearRect(0, 0, width, height);
+        for (const p of particles) {
+          const age = elapsed - p.start;
+          if (age < 0 || age > p.life) continue;
+          const gravity = p.type === 'spark' ? 35 : 100;
+          const x = p.x + p.vx * age;
+          const y = p.y + p.vy * age + gravity * age * age;
+          context.save();
+          context.translate(x, y);
+          context.rotate(age * p.spin);
+          context.globalAlpha = Math.min(1, (p.life - age) * 1.7);
+          context.fillStyle = context.strokeStyle = p.color;
+          if (p.type === 'spark') {
+            context.lineWidth = p.size;
+            context.lineCap = 'round';
+            context.beginPath();
+            context.moveTo(-p.vx * .035, -p.vy * .035);
+            context.lineTo(0, 0);
+            context.stroke();
+          } else if (p.type === 'star') {
+            context.beginPath();
+            context.moveTo(0, -p.size); context.lineTo(p.size * .28, -p.size * .28);
+            context.lineTo(p.size, 0); context.lineTo(p.size * .28, p.size * .28);
+            context.lineTo(0, p.size); context.lineTo(-p.size * .28, p.size * .28);
+            context.lineTo(-p.size, 0); context.lineTo(-p.size * .28, -p.size * .28);
+            context.closePath(); context.fill();
+          } else {
+            context.scale(Math.cos(age * 7 + p.spin), 1);
+            context.fillRect(-p.size / 2, -p.size, p.size, p.size * 2);
+          }
+          context.restore();
+        }
+        if (elapsed < 3) effectFrame = requestAnimationFrame(frame);
+        else stopCelebration();
+      }
+      effectFrame = requestAnimationFrame(frame);
+    }
+
+    function clearResult() {
+      stopCelebration();
+      if ($('achievement').open) $('achievement').close();
+      buildEnvelopes();
+      $('matches').textContent = '—';
+      $('total').textContent = n;
+      $('rate').textContent = '— %';
+      $('status').textContent = currentRecord().trials ? `試行 ${currentRecord().trials.toLocaleString('ja-JP')}回の記録を表示中` : '未実行';
+    }
+
+    const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+    function setBusy(value) {
+      busy = value;
+      ['run', 'reset', 'letter-count', 'batch'].forEach(id => { $(id).disabled = value; });
+      $('envelopes').setAttribute('aria-busy', String(value));
+    }
+
+    async function presentResult(result, animate = true) {
+      buildEnvelopes();
+      $('matches').textContent = '—';
+      $('rate').textContent = '— %';
+      $('status').textContent = '組み合わせ中…';
+      const cards = [...$('envelopes').children];
+      const interval = !animate || reducedMotion.matches ? 0 : Math.min(65, 850 / n);
+      for (let i = 0; i < n; i++) {
+        if (interval) await delay(interval);
+        showLetter(cards[i], result.letters[i], i + 1);
+      }
+      $('matches').textContent = result.matches;
+      $('rate').textContent = `${(result.matches / n * 100).toFixed(1)} %`;
+      $('status').textContent = `試行 ${currentRecord().trials.toLocaleString('ja-JP')}回目`;
+      if (shouldCelebrate(result.matches, n)) showAchievement(result.matches, n);
+    }
+
+    async function run() {
+      if (busy) return;
+      setBusy(true);
+      stopCelebration();
+      try {
+        const result = draw(n);
+        record(result);
+        await presentResult(result);
+        updateRecords();
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function runBatch() {
+      if (busy) return;
+      setBusy(true);
+      stopCelebration();
+      let last;
+      try {
+        for (let batch = 0; batch < 10; batch++) {
+          for (let i = 0; i < 100; i++) {
+            last = draw(n);
+            record(last);
+          }
+          updateRecords();
+          $('status').textContent = `一括実行 ${(batch + 1) * 100} / 1,000回`;
+          await delay(reducedMotion.matches ? 0 : 25);
+        }
+        await presentResult(last, false);
+        $('status').textContent = `1,000回の実行が完了 · 累計 ${currentRecord().trials.toLocaleString('ja-JP')}回`;
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    $('letter-count').addEventListener('input', () => {
+      n = Number($('letter-count').value);
+      $('count-value').textContent = n;
+      $('letter-count').setAttribute('aria-valuetext', `${n}組`);
+      clearResult();
+      updateRecords();
+      renderProbabilityChart();
+    });
+    $('run').addEventListener('click', run);
+    $('batch').addEventListener('click', runBatch);
+    $('reset').addEventListener('click', () => {
+      records.delete(n);
+      clearResult();
+      updateRecords();
+    });
+    $('achievement-close').addEventListener('click', () => $('achievement').close());
+    $('achievement').addEventListener('close', stopCelebration);
+    addEventListener('resize', stopCelebration);
+    reducedMotion.addEventListener('change', stopCelebration);
+    clearResult();
+    updateRecords();
+    renderProbabilityChart();
+  </script>
+</body>
+</html>
