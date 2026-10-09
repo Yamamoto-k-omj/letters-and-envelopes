@@ -19,7 +19,6 @@
     .heading { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; }
     .heading-icon { width: 34px; height: 34px; fill: none; stroke: var(--ink); stroke-width: 1.3; stroke-linejoin: round; }
     h1 { font-size: 28px; font-weight: 600; letter-spacing: .04em; }
-    .subtitle { color: var(--muted); font-size: 12px; margin-top: 7px; }
     .workspace { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; transition: box-shadow .5s, border-color .5s; }
     .controls { padding: 25px 28px; display: flex; align-items: center; gap: 24px; border-bottom: 1px solid var(--line); }
     .count-label { flex-shrink: 0; font-size: 13px; }
@@ -33,8 +32,6 @@
     .count-value { min-width: 63px; font-size: 12px; text-align: right; color: var(--muted); }
     .count-value strong { color: var(--ink); font-size: 25px; font-weight: 500; font-variant-numeric: tabular-nums; margin-right: 5px; }
     .board { padding: 25px 28px 28px; }
-    .board-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 18px; font-size: 12px; }
-    .board-heading span:last-child { font-size: 11px; color: var(--muted); }
     .envelopes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
     .envelope { min-height: 109px; border: 1px solid #dee2e9; border-radius: 6px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; background: #fff; }
     .envelope::before { content: ""; position: absolute; inset: 0 0 auto; height: 51px; background: #f3f4f7; clip-path: polygon(0 0, 100% 0, 50% 100%); }
@@ -76,7 +73,6 @@
     .records { margin-top: 34px; }
     .records-heading { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 16px; }
     .records-heading h2 { font-size: 15px; font-weight: 500; margin: 0; }
-    .record-count { color: var(--muted); font-size: 11px; margin-top: 7px; }
     .batch { background: white; color: var(--ink); border: 1px solid var(--line); padding: 10px 14px; border-radius: 6px; font-size: 11px; }
     .batch:hover { background: #f6f7f9; }
     .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
@@ -90,7 +86,6 @@
     .chart-legend span { display: inline-flex; align-items: center; gap: 5px; }
     .chart-legend i { display: block; width: 14px; height: 2px; background: var(--blue); }
     .chart-legend .reference { background: transparent; border-top: 1px dashed #7b8089; }
-    .record-note { font-size: 10px; color: var(--muted); margin-top: 12px; line-height: 1.8; }
     .achievement { width: min(460px, calc(100% - 40px)); max-height: calc(100% - 40px); overflow-y: auto; padding: 32px; border: 1px solid #d7e1ff; border-radius: 14px; color: var(--ink); background: #fff; box-shadow: 0 18px 90px #354b7630; }
     .achievement::backdrop { background: #20283818; backdrop-filter: blur(1px); }
     .achievement-mark { width: 38px; height: 38px; display: grid; place-items: center; color: var(--blue); background: #eef3ff; border-radius: 50%; margin-bottom: 18px; font-size: 23px; }
@@ -139,7 +134,6 @@
     @media (max-width: 350px) {
       .app { padding: 0 14px; }
       .board, .controls, .result { padding-left: 14px; padding-right: 14px; }
-      .board-heading span:last-child { font-size: 10px; }
       .dense { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .many { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
@@ -150,7 +144,7 @@
   <main class="app">
     <header class="heading">
       <svg class="heading-icon" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="7" width="26" height="19" rx="2"/><path d="m3 8 13 10L29 8"/></svg>
-      <div><h1>手紙と封筒</h1><p class="subtitle">ランダムな組み合わせ</p></div>
+      <h1>手紙と封筒</h1>
     </header>
     <section class="workspace" id="workspace" aria-label="手紙と封筒の組み合わせ実験">
       <div class="controls">
@@ -159,7 +153,6 @@
         <output class="count-value" for="letter-count"><strong id="count-value">10</strong>組</output>
       </div>
       <div class="board">
-        <div class="board-heading"><span>封筒</span><span>同じ番号なら正解</span></div>
         <div class="envelopes" id="envelopes" aria-label="各封筒に入った手紙"></div>
       </div>
       <div class="result">
@@ -172,12 +165,12 @@
     </section>
     <p class="status" id="status" role="status">未実行</p>
     <section class="records" aria-labelledby="records-title">
-      <div class="records-heading"><div><h2 id="records-title">試行の記録</h2><p class="record-count" id="record-count">n = 10 · 0回</p></div><button class="batch" id="batch">1,000回実行</button></div>
+      <div class="records-heading"><h2 id="records-title">試行の記録</h2><button class="batch" id="batch">1,000回実行</button></div>
       <div class="charts">
         <article class="chart-card">
           <h3>全部不一致の確率</h3>
-          <p class="chart-number"><span id="no-match-probability">36.7879</span><small>%</small></p>
-          <div class="chart-meta"><span>n = <span id="probability-n">10</span> の理論値</span><span>実測 <span id="observed-no-match">—</span></span></div>
+          <p class="chart-number"><span id="observed-no-match">—</span><small>%</small></p>
+          <div class="chart-meta"><span>n = <span id="probability-n">10</span> の実測</span><span>理論値 <span id="no-match-probability">36.7879</span>%</span></div>
           <svg class="chart" id="probability-chart" viewBox="0 0 360 190" role="img" aria-label="組数を増やすと全部不一致の確率が1/eに近づくグラフ"></svg>
           <div class="chart-legend"><span><i></i>全部不一致の確率</span><span><i class="reference"></i>1/e ≈ 36.7879%</span></div>
         </article>
@@ -189,7 +182,6 @@
           <div class="chart-legend"><span><i></i>ここまでの平均</span></div>
         </article>
       </div>
-      <p class="record-note">記録は組数ごとに切り替わります。一括実行では最後の結果を封筒に表示します。</p>
     </section>
     <noscript><p class="no-script">JavaScript を有効にして開いてください。</p></noscript>
   </main>
@@ -320,10 +312,9 @@
 
     function updateRecords() {
       const data = currentRecord();
-      $('record-count').textContent = `n = ${n} · ${data.trials.toLocaleString('ja-JP')}回`;
       $('no-match-probability').textContent = (noMatchProbability(n) * 100).toFixed(4);
       $('probability-n').textContent = $('mean-n').textContent = n;
-      $('observed-no-match').textContent = data.trials ? `${(data.misses / data.trials * 100).toFixed(2)}%` : '—';
+      $('observed-no-match').textContent = data.trials ? (data.misses / data.trials * 100).toFixed(2) : '—';
       $('mean-matches').textContent = data.trials ? (data.totalMatches / data.trials).toFixed(3) : '—';
       renderMeanChart(data);
     }
@@ -508,7 +499,7 @@
           await delay(reducedMotion.matches ? 0 : 25);
         }
         await presentResult(last, false);
-        $('status').textContent = `1,000回の実行が完了 · 累計 ${currentRecord().trials.toLocaleString('ja-JP')}回`;
+        $('status').textContent = '';
       } finally {
         setBusy(false);
       }
