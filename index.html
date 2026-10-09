@@ -170,14 +170,14 @@
         <article class="chart-card">
           <h3>全部不一致の確率</h3>
           <p class="chart-number"><span id="observed-no-match">—</span><small>%</small></p>
-          <div class="chart-meta"><span>n = <span id="probability-n">10</span> の実測</span><span>理論値 <span id="no-match-probability">36.7879</span>%</span></div>
-          <svg class="chart" id="probability-chart" viewBox="0 0 360 190" role="img" aria-label="組数を増やすと全部不一致の確率が1/eに近づくグラフ"></svg>
-          <div class="chart-legend"><span><i></i>全部不一致の確率</span><span><i class="reference"></i>1/e ≈ 36.7879%</span></div>
+          <div class="chart-meta"><span>理論値 <span id="no-match-probability">36.7879</span>%</span></div>
+          <svg class="chart" id="probability-chart" viewBox="0 0 360 190" role="img" aria-label="試行を重ねたときの全部不一致だった割合を表示するグラフ"></svg>
+          <div class="chart-legend"><span><i></i>ここまでの割合</span><span><i class="reference"></i>1/e ≈ 36.7879%</span></div>
         </article>
         <article class="chart-card">
           <h3>一致数の平均</h3>
           <p class="chart-number"><span id="mean-matches">—</span><small>組</small></p>
-          <div class="chart-meta"><span>n = <span id="mean-n">10</span> の実測</span><span>一致数はnに依らず、ある値に収束する</span></div>
+          <div class="chart-meta"><span>一致数はnに依らず、ある値に収束する</span></div>
           <svg class="chart" id="mean-chart" viewBox="0 0 360 190" role="img" aria-label="試行を重ねたときの一致数の平均を表示するグラフ"></svg>
           <div class="chart-legend"><span><i></i>ここまでの平均</span></div>
         </article>
@@ -262,25 +262,33 @@
       data.trials++;
       if (result.matches === 0) data.misses++;
       data.totalMatches += result.matches;
-      data.history.push([data.trials, data.totalMatches / data.trials]);
+      data.history.push([data.trials, data.totalMatches / data.trials, data.misses / data.trials]);
     }
 
-    function renderProbabilityChart() {
-      const x = size => 37 + (size - 2) / 98 * 296;
-      const y = probability => 151 - (probability - .28) / .24 * 132;
+    function renderProbabilityChart(data) {
+      const x = trial => 37 + (trial - 1) / Math.max(1, data.trials - 1) * 296;
+      const y = probability => 151 - probability * 132;
       let markup = '';
-      [.3, .4, .5].forEach(probability => {
+      [0, .5, 1].forEach(probability => {
         markup += `<line x1="37" x2="333" y1="${y(probability)}" y2="${y(probability)}" stroke="#e9ebf0"/><text x="29" y="${y(probability) + 3}" text-anchor="end" fill="#717680" font-size="9">${Math.round(probability * 100)}%</text>`;
       });
-      [2, 10, 50, 100].forEach(size => {
-        markup += `<text x="${x(size)}" y="169" text-anchor="middle" fill="#717680" font-size="9">${size}</text>`;
-      });
-      const points = Array.from({length: 99}, (_, i) => `${x(i + 2)},${y(noMatchProbability(i + 2))}`);
-      markup += `<line x1="37" x2="333" y1="${y(1 / Math.E)}" y2="${y(1 / Math.E)}" stroke="#7b8089" stroke-dasharray="4 4"/><polyline points="${points.join(' ')}" fill="none" stroke="#3563db" stroke-width="2" stroke-linejoin="round"/>`;
-      markup += `<line x1="${x(n)}" x2="${x(n)}" y1="19" y2="151" stroke="#b4c4ec" stroke-dasharray="2 3"/><circle cx="${x(n)}" cy="${y(noMatchProbability(n))}" r="4" fill="#3563db" stroke="white" stroke-width="1.5"/>`;
-      markup += '<text x="333" y="188" text-anchor="end" fill="#717680" font-size="9">組数 n</text>';
+      markup += `<line x1="37" x2="333" y1="${y(1 / Math.E)}" y2="${y(1 / Math.E)}" stroke="#7b8089" stroke-dasharray="4 4"/>`;
+      if (data.trials) {
+        const stride = Math.max(1, Math.ceil(data.history.length / 250));
+        const points = data.history.filter((_, i) => i % stride === 0 || i === data.history.length - 1);
+        markup += `<polyline points="${points.map(point => `${x(point[0])},${y(point[2])}`).join(' ')}" fill="none" stroke="#3563db" stroke-width="2" stroke-linejoin="round"/>`;
+        const latest = data.history[data.history.length - 1];
+        markup += `<circle cx="${x(latest[0])}" cy="${y(latest[2])}" r="3" fill="#3563db"/>`;
+        const ticks = [...new Set([1, Math.ceil(data.trials / 2), data.trials])];
+        ticks.forEach(trial => {
+          markup += `<text x="${x(trial)}" y="169" text-anchor="middle" fill="#717680" font-size="9">${trial.toLocaleString('ja-JP')}</text>`;
+        });
+      } else {
+        markup += '<text x="185" y="115" text-anchor="middle" fill="#9297a0" font-size="10">まだ記録がありません</text>';
+      }
+      markup += '<text x="333" y="188" text-anchor="end" fill="#717680" font-size="9">試行回数</text>';
       $('probability-chart').innerHTML = markup;
-      $('probability-chart').setAttribute('aria-label', `組数を増やすと全部不一致の確率が1/e、約36.7879%に近づきます。n=${n}では${(noMatchProbability(n) * 100).toFixed(4)}%です。`);
+      $('probability-chart').setAttribute('aria-label', data.trials ? `n=${n}、${data.trials}回の試行で全部不一致だった割合は${(data.misses / data.trials * 100).toFixed(2)}%です。参照線は1/e、約36.7879%です。` : 'まだ試行の記録がありません。参照線は1/e、約36.7879%です。');
     }
 
     function renderMeanChart(data) {
@@ -313,9 +321,9 @@
     function updateRecords() {
       const data = currentRecord();
       $('no-match-probability').textContent = (noMatchProbability(n) * 100).toFixed(4);
-      $('probability-n').textContent = $('mean-n').textContent = n;
       $('observed-no-match').textContent = data.trials ? (data.misses / data.trials * 100).toFixed(2) : '—';
       $('mean-matches').textContent = data.trials ? (data.totalMatches / data.trials).toFixed(3) : '—';
+      renderProbabilityChart(data);
       renderMeanChart(data);
     }
 
@@ -511,7 +519,6 @@
       $('letter-count').setAttribute('aria-valuetext', `${n}組`);
       clearResult();
       updateRecords();
-      renderProbabilityChart();
     });
     $('run').addEventListener('click', run);
     $('batch').addEventListener('click', runBatch);
@@ -526,7 +533,6 @@
     reducedMotion.addEventListener('change', stopCelebration);
     clearResult();
     updateRecords();
-    renderProbabilityChart();
   </script>
 </body>
 </html>
